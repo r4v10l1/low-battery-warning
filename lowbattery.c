@@ -24,8 +24,8 @@ char* readfile(char* base, char* file) {
 }
 
 int main() {
-    int cap;
-    int charging = 0;
+    int cap0, cap1;
+    char *buf0, *buf1;
 
     char file[256];
     strcat(strcpy(file, getenv("HOME")), "/.lowbattery_lock");
@@ -39,31 +39,41 @@ int main() {
     }
 
     for (;; sleep(1)) {
-        char* cp = readfile("/sys/class/power_supply/BAT1", "capacity");
-        sscanf(cp, "%d", &cap);
-        free(cp);
+        buf0 = readfile("/sys/class/power_supply/BAT0", "capacity");
+        sscanf(buf0, "%d", &cap0);
+        free(buf0);
 
-        cp = readfile("/sys/class/power_supply/BAT1", "status");
-        if (!strncmp(cp, "Discharging", 11)) {
-            if (cap <= LOW_BATTERY_WARNING_THRESHOLD && !charging &&
-                notify_init("Low battery notification")) {
-                charging = 0;
+        // We could use the same buffer for cap1 but this way is cleaner
+        buf1 = readfile("/sys/class/power_supply/BAT1", "capacity");
+        sscanf(buf1, "%d", &cap1);
+        free(buf1);
 
-                NotifyNotification* notification =
-                  notify_notification_new("Battery Low", "Connect charger", NULL);
-                notify_notification_set_urgency(notification,
-                                                NOTIFY_URGENCY_CRITICAL);
-                notify_notification_show(notification, NULL);
+        // If both batteries are charged, stop
+        if (cap0 > LOW_BATTERY_WARNING_THRESHOLD &&
+            cap1 > LOW_BATTERY_WARNING_THRESHOLD)
+            continue;
 
-                g_object_unref(notification);
-                notify_uninit();
-            }
-        } else if (!strncmp(cp, "Charging", 8)) {
-            if (!charging) {
-                charging = 1;
-            }
+        buf0 = readfile("/sys/class/power_supply/BAT0", "status");
+        buf1 = readfile("/sys/class/power_supply/BAT1", "status");
+
+        // If any of the batteries is charging, stop. We don't care if the second one
+        // is empty as long as we have the first one.
+        if (strncmp(buf0, "Charging", 8) == 0 || strncmp(buf1, "Charging", 8) == 0)
+            continue;
+
+        // Actual notification if no batteries are charging and one is low enough
+        if (notify_init("Low battery notification")) {
+            NotifyNotification* notification =
+              notify_notification_new("Battery Low", "Connect charger", NULL);
+            notify_notification_set_urgency(notification, NOTIFY_URGENCY_CRITICAL);
+            notify_notification_show(notification, NULL);
+
+            g_object_unref(notification);
+            notify_uninit();
         }
-        free(cp);
+
+        free(buf0);
+        free(buf1);
     }
 
     return 0;
