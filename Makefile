@@ -7,10 +7,10 @@ OBJ = $(SRC:.c=.o)
 all: lowbattery
 
 .c.o:
-	gcc -O2 `pkg-config --cflags libnotify`-c $<
+	gcc -O2 -c $<
 
 lowbattery: lowbattery.o
-	gcc `pkg-config --libs libnotify` lowbattery.o -o lowbattery
+	gcc lowbattery.o -o lowbattery
 
 clean:
 	rm -f lowbattery $(OBJ)

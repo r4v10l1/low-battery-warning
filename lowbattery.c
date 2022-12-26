@@ -1,9 +1,14 @@
+
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/file.h>
 #include <errno.h>
-#include <libnotify/notify.h>
 
 #define LOW_BATTERY_WARNING_THRESHOLD 20
+#define LOW_BATTERY_CMD \
+    "echo -e \"\nWarning. Low battery!\n\" | tee /dev/pts/* &> /dev/null"
 
 char* readfile(char* base, char* file) {
     char path[512];
@@ -27,8 +32,11 @@ int main() {
     int cap0, cap1;
     char *buf0, *buf1;
 
+    int ran_cmd = 0;
+
     char file[256];
     strcat(strcpy(file, getenv("HOME")), "/.lowbattery_lock");
+
     int pid_file = open(file, O_CREAT | O_RDWR, 0666);
     int rc       = flock(pid_file, LOCK_EX | LOCK_NB);
     if (rc) {
@@ -50,26 +58,26 @@ int main() {
 
         // If both batteries are charged, stop
         if (cap0 > LOW_BATTERY_WARNING_THRESHOLD &&
-            cap1 > LOW_BATTERY_WARNING_THRESHOLD)
+            cap1 > LOW_BATTERY_WARNING_THRESHOLD) {
+            ran_cmd = 0;
             continue;
+        }
 
         buf0 = readfile("/sys/class/power_supply/BAT0", "status");
         buf1 = readfile("/sys/class/power_supply/BAT1", "status");
 
         // If any of the batteries is charging, stop. We don't care if the second one
         // is empty as long as we have the first one.
-        if (strncmp(buf0, "Charging", 8) == 0 || strncmp(buf1, "Charging", 8) == 0)
+        if (strncmp(buf0, "Charging", 8) == 0 || strncmp(buf1, "Charging", 8) == 0) {
+            ran_cmd = 0;
             continue;
+        }
 
-        // Actual notification if no batteries are charging and one is low enough
-        if (notify_init("Low battery notification")) {
-            NotifyNotification* notification =
-              notify_notification_new("Battery Low", "Connect charger", NULL);
-            notify_notification_set_urgency(notification, NOTIFY_URGENCY_CRITICAL);
-            notify_notification_show(notification, NULL);
-
-            g_object_unref(notification);
-            notify_uninit();
+        // Command to run  if no batteries are charging and one is low enough.
+        // Only execute once.
+        if (!ran_cmd) {
+            system(LOW_BATTERY_CMD);
+            ran_cmd = 1;
         }
 
         free(buf0);
