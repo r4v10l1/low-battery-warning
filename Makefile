@@ -9,7 +9,7 @@ all: lowbattery
 .c.o:
 	gcc -O2 -c $<
 
-lowbattery: lowbattery.o
+lowbattery: $(OBJ)
 	gcc lowbattery.o -o lowbattery
 
 clean:
@@ -19,8 +19,10 @@ install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp -f lowbattery $(DESTDIR)$(PREFIX)/bin
 	chmod 755 $(DESTDIR)$(PREFIX)/bin/lowbattery
+
 service:
 	cp -f lowbattery.service /usr/lib/systemd/system/lowbattery.service
+
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/lowbattery
 	rm -f /etc/systemd/system/lowbattery.service
