@@ -8,7 +8,7 @@
 
 #define LOW_BATTERY_WARNING_THRESHOLD 20
 #define LOW_BATTERY_CMD \
-    "echo -e \"\nWarning. Low battery!\n\" | tee /dev/pts/* &> /dev/null"
+    "echo -ne \"\nWarning. Low battery!\" | tee /dev/pts/* &> /dev/null"
 
 char* readfile(char* base, char* file) {
     char path[512];
