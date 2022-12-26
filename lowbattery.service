@@ -2,7 +2,7 @@
 
 Description=Low battery warning notification
 
-Documentation=https://www.github.com/vedpatil611/low-battery-warning
+Documentation=https://www.github.com/r4v10l1/low-battery-warning
 
 [Service]
 
